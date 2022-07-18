@@ -5,7 +5,7 @@ on:
     inputs:
       version:
         type: string
-        description: Version
+        description: Version (must exist in repo)
         required: true
 
 jobs:
@@ -15,17 +15,41 @@ jobs:
 
     strategy:
       matrix:
-        db-type: [postgresql, mysql]
+        database_type: [postgresql, mysql]
 
     steps:
       - uses: actions/checkout@v2
-
-      - uses: mr-smithers-excellent/docker-build-push@v5
-        name: Build & push Docker image for ${{ matrix.db-type }}
         with:
-          image: umami
-          tags: ${{ matrix.db-type }}-${{ inputs.version }}, ${{ matrix.db-type }}-latest
-          buildArgs: DATABASE_TYPE=${{ matrix.db-type }}
+          ref: v${{ inputs.version }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v2
+        with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: |
+            ghcr.io/${{ github.repository }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v3
+        with:
+          build-args:
+            DATABASE_TYPE=${{ matrix.database_type }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/arm64
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}:${{ inputs.version }}-${{ matrix.database_type }}

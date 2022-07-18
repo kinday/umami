@@ -1,5 +1,7 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  // Target Alpine Linux
+  binaryTargets = ["linux-musl"]
 }
 
 datasource db {
